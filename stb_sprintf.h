@@ -8,6 +8,7 @@
 // Contributors:
 //    Fabian "ryg" Giesen (reformatting)
 //    github:aganm (attribute format)
+//    Thomas Doylend (slice types)
 //
 // Contributors (bugfixes):
 //    github:d26435
@@ -120,6 +121,13 @@ suffix, add "_" specifier: "%_$d" -> "2.53M".
 
 In addition to octal and hexadecimal conversions, you can print
 integers in binary: "%b" for 256 would print 100.
+
+Some C applications use string slices with explicit length rather than
+NUL-terminated strings. If you want to use these without needing to pass
+the length separately each time, you can define the STB_SLICE_TYPE,
+STB_SLICE_LENGTH, and STB_SLICE_BYTES macros as the slice type and
+length+bytes getters, respectively. You can then use the "%S" specifier
+for slices.
 
 PERFORMANCE vs MSVC 2008 32-/64-bit (GCC is even slower than MSVC):
 ===================================================================
@@ -254,6 +262,10 @@ STBSP__PUBLICDEC void STB_SPRINTF_DECORATE(set_separators)(char comma, char peri
 static stbsp__int32 stbsp__real_to_str(char const **start, stbsp__uint32 *len, char *out, stbsp__int32 *decimal_pos, double value, stbsp__uint32 frac_digits);
 static stbsp__int32 stbsp__real_to_parts(stbsp__int64 *bits, stbsp__int32 *expo, double value);
 #define STBSP__SPECIAL 0x7000
+#endif
+
+#if defined(STB_SLICE_TYPE) && (!defined(STB_SLICE_LENGTH) || !defined(STB_SLICE_BYTES))
+#error Please provide definitions for STB_SLICE_LENGTH and STB_SLICE_BYTES.
 #endif
 
 static char stbsp__period = '.';
@@ -575,6 +587,9 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
          char lead[8];
          char tail[8];
          char *s;
+#ifdef STB_SLICE_TYPE
+         STB_SLICE_TYPE sl;
+#endif
          char const *h;
          stbsp__uint32 l, n, cs;
          stbsp__uint64 n64;
@@ -599,6 +614,29 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
          cs = 0;
          // copy the string in
          goto scopy;
+
+#ifdef STB_SLICE_TYPE
+      case 'S':
+         // get the slice
+         sl = va_arg(va, STB_SLICE_TYPE);
+         s = (char*)(STB_SLICE_BYTES(sl));
+         if (s == 0)
+            s = (char *)"null";
+         if ((STB_SLICE_LENGTH(sl)) > ~0u) {
+            l = ~0u;
+         } else {
+            l = (STB_SLICE_LENGTH(sl));
+         }
+         if ((pr >= 0) && (pr < l)) {
+            l = pr;
+         }
+         lead[0] = 0;
+         tail[0] = 0;
+         pr = 0;
+         dp = 0;
+         cs = 0;
+         goto scopy;
+#endif
 
       case 'c': // char
          // get the character
