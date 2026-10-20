@@ -264,6 +264,8 @@ static stbsp__int32 stbsp__real_to_parts(stbsp__int64 *bits, stbsp__int32 *expo,
 #define STBSP__SPECIAL 0x7000
 #endif
 
+#define STB_SUPPORTS_SLICES 1
+
 #if defined(STB_SLICE_TYPE) && (!defined(STB_SLICE_LENGTH) || !defined(STB_SLICE_BYTES))
 #error Please provide definitions for STB_SLICE_LENGTH and STB_SLICE_BYTES.
 #endif
